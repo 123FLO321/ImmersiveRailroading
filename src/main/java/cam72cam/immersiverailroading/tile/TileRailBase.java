@@ -119,6 +119,12 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 					case LOCO_CONTROL:
 						controlMode = LocoControlMode.COMPUTER;
 						break;
+					case ITEM_LOADER:
+					case ITEM_UNLOADER:
+					case FLUID_LOADER:
+					case FLUID_UNLOADER:
+						redstoneMode = RedstoneMode.COMPUTER;
+						break;
 				}
 			}
 		}
@@ -430,6 +436,7 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 	private boolean canOperate() {
 		switch (this.redstoneMode) {
 			case ENABLED:
+			case COMPUTER:
 				return true;
 			case REQUIRED:
 				return getWorld().getRedstone(getPos()) > 0;
@@ -563,6 +570,10 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 			switch (this.augment) {
             case ITEM_LOADER:
 			{
+				if (redstoneMode == RedstoneMode.COMPUTER) {
+					break;
+				}
+
 				Freight freight = this.getStockNearBy(Freight.class);
 				if (freight == null) {
 					break;
@@ -576,6 +587,10 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 			}
 			break;
 			case ITEM_UNLOADER: {
+				if (redstoneMode == RedstoneMode.COMPUTER) {
+					break;
+				}
+
 				Freight freight = this.getStockNearBy(Freight.class);
 				if (freight == null) {
 					break;
@@ -589,6 +604,10 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 			}
 			break;
 			case FLUID_LOADER: {
+				if (redstoneMode == RedstoneMode.COMPUTER) {
+					break;
+				}
+
 				FreightTank stock = this.getStockNearBy(FreightTank.class);
 				if (stock == null) {
 					break;
@@ -602,6 +621,10 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 			}
 				break;
 			case FLUID_UNLOADER: {
+				if (redstoneMode == RedstoneMode.COMPUTER) {
+					break;
+				}
+
 				FreightTank stock = this.getStockNearBy(FreightTank.class);
 				if (stock == null) {
 					break;
