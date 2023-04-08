@@ -288,13 +288,16 @@ public abstract class EntityMoveableRollingStock extends EntityRidableRollingSto
         super.onTick();
 
         if (getWorld().isServer) {
-            // if we have a home position, teleport the train to it on the first tick
+            // if we have a home position, teleport the train to it on the first tick, if it is loaded within the first 60 seconds
             if (!homePositionApplied && homePosition != null) {
+                long tickID = ServerChronoState.getState(getWorld()).getServerTickID();
+                if (tickID < 1200) {
+                    setPosition(homePosition);
+                    setRotationPitch(homePitch);
+                    setRotationYaw(homeYaw);
+                    setVelocity(Vec3d.ZERO);
+                }
                 homePositionApplied = true;
-                setPosition(homePosition);
-                setRotationPitch(homePitch);
-                setRotationYaw(homeYaw);
-                setVelocity(Vec3d.ZERO);
             }
 
             if (getDefinition().hasIndependentBrake()) {
