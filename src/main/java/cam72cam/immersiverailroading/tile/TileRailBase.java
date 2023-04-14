@@ -377,7 +377,11 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 
 		double distanceMeters = motion.length();
 		if (distanceMeters > MovementTrack.maxDistance) {
-			return MovementTrack.nextPosition(getWorld(), currentPosition, tile, rotationYaw, distanceMeters);
+			Vec3d next = MovementTrack.nextPosition(getWorld(), currentPosition, tile, rotationYaw, distanceMeters);
+			if (cacheVector != null) {
+				motionCache.put(cacheVector, next);
+			}
+			return next;
 		}
 
 		while(tile != null) {
@@ -387,8 +391,7 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 				tile = tile.getParentTile();
 			}
 
-			TrackItems trackType = tile.info.settings.type;
-			if (trackType != TrackItems.STRAIGHT && trackType != TrackItems.TURN && trackType != TrackItems.CUSTOM) {
+			if (state != SwitchState.NONE) {
 				hasSwitches = true;
 			}
 
