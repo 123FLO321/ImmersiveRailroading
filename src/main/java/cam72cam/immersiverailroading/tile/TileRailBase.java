@@ -34,15 +34,11 @@ import cam72cam.immersiverailroading.thirdparty.trackapi.ITrack;
 import cam72cam.mod.util.SingleCache;
 import org.apache.commons.lang3.ArrayUtils;
 
-import java.util.HashMap;
 import java.util.List;
 
 import static cam72cam.immersiverailroading.entity.Locomotive.AUTOMATED_PLAYER;
 
 public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneProvider {
-
-	private static final HashMap<Vec3i, Vec3d> motionCache = new HashMap<>();
-
 	@TagField("parent")
 	private Vec3i parent;
 	@TagField("height")
@@ -347,25 +343,10 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 
 	@Override
 	public Vec3d getNextPosition(Vec3d currentPosition, Vec3d motion) {
-
-		Vec3d predictedPos = currentPosition.add(motion);
-
-		// get the current speed of the train, if no trains is overhead then assume 100km/h
-		double stockSpeed = overhead != null ? Math.abs(overhead.getCurrentSpeed().metric()) : 100;
-
-		// if the speed is less than 10km/h we skip cache to allow smoother acceleration
-		Vec3i cacheVector = null;
-		if (stockSpeed >= 10) {
-			cacheVector = new Vec3i(predictedPos.x * 16, predictedPos.y * 16, predictedPos.z * 16);
-			if (motionCache.containsKey(cacheVector)) {
-				return motionCache.get(cacheVector);
-			}
-		}
-
 		float rotationYaw = VecUtil.toWrongYaw(motion);
 		Vec3d nextPos = currentPosition;
+		Vec3d predictedPos = currentPosition.add(motion);
 		boolean hasSwitchSet = false;
-		boolean hasSwitches = false;
 
 		TileRailBase self = this;
 		TileRail tile = this instanceof TileRail ? (TileRail) this : this.getParentTile();
@@ -377,11 +358,7 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 
 		double distanceMeters = motion.length();
 		if (distanceMeters > MovementTrack.maxDistance) {
-			Vec3d next = MovementTrack.nextPosition(getWorld(), currentPosition, tile, rotationYaw, distanceMeters);
-			if (cacheVector != null) {
-				motionCache.put(cacheVector, next);
-			}
-			return next;
+			return MovementTrack.nextPosition(getWorld(), currentPosition, tile, rotationYaw, distanceMeters);
 		}
 
 		while(tile != null) {
@@ -391,9 +368,6 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 				tile = tile.getParentTile();
 			}
 
-			if (state != SwitchState.NONE) {
-				hasSwitches = true;
-			}
 
 			Vec3d potential = MovementTrack.nextPositionDirect(getWorld(), currentPosition, tile, rotationYaw, distanceMeters);
 			if (potential != null) {
@@ -438,14 +412,9 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 				}
 			}
 		}
-
-		if (!hasSwitches && cacheVector != null) {
-			motionCache.put(cacheVector, nextPos);
-		}
-
 		return nextPos;
 	}
-
+	
 	/*
 	 * Capabilities tie ins
 	 */
