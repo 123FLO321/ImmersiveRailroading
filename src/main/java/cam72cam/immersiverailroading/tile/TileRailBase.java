@@ -41,7 +41,8 @@ import static cam72cam.immersiverailroading.entity.Locomotive.AUTOMATED_PLAYER;
 
 public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneProvider {
 
-	private static final HashMap<Vec3i, Vec3d> motionCache = new HashMap<>();
+	private final HashMap<Vec3i, Vec3d> motionCache = new HashMap<>();
+	private long motionCacheLastModified = -1;
 
 	@TagField("parent")
 	private Vec3i parent;
@@ -345,6 +346,21 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 		return cachedGauge != null ? cachedGauge : 0;
 	}
 
+//	long count = 0;
+//	long cacheCount = 0;
+//
+//	public void trackCache(boolean hit) {
+//		count ++;
+//		if (hit) {
+//			cacheCount ++;
+//		}
+//		if (count >= 100) {
+//			System.out.println("Cache hit rate: " + cacheCount + "/" + count + " = " + (cacheCount / (double)count));
+//			count = 0;
+//			cacheCount = 0;
+//		}
+//	}
+
 	@Override
 	public Vec3d getNextPosition(Vec3d currentPosition, Vec3d motion) {
 
@@ -356,8 +372,10 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 		// if the speed is less than 10km/h we skip cache to allow smoother acceleration
 		Vec3i cacheVector = null;
 		if (stockSpeed >= 10) {
-			cacheVector = new Vec3i(predictedPos.x * 16, predictedPos.y * 16, predictedPos.z * 16);
+			long cacheStep = stockSpeed < 50 ? 16 : stockSpeed < 100 ? 8 : 4;
+			cacheVector = new Vec3i(predictedPos.x * cacheStep, predictedPos.y * cacheStep, predictedPos.z * cacheStep);
 			if (motionCache.containsKey(cacheVector)) {
+//				trackCache(true);
 				return motionCache.get(cacheVector);
 			}
 		}
@@ -365,7 +383,6 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 		float rotationYaw = VecUtil.toWrongYaw(motion);
 		Vec3d nextPos = currentPosition;
 		boolean hasSwitchSet = false;
-		boolean hasSwitches = false;
 
 		TileRailBase self = this;
 		TileRail tile = this instanceof TileRail ? (TileRail) this : this.getParentTile();
@@ -377,7 +394,13 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 
 		double distanceMeters = motion.length();
 		if (distanceMeters > MovementTrack.maxDistance) {
-			return MovementTrack.nextPosition(getWorld(), currentPosition, tile, rotationYaw, distanceMeters);
+			Vec3d next = MovementTrack.nextPosition(getWorld(), currentPosition, tile, rotationYaw, distanceMeters);
+			if (cacheVector != null) {
+				motionCache.put(cacheVector, next);
+				motionCacheLastModified = ticksExisted;
+			}
+//			trackCache(false);
+			return next;
 		}
 
 		while(tile != null) {
@@ -385,11 +408,6 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 
 			if (state == SwitchState.STRAIGHT) {
 				tile = tile.getParentTile();
-			}
-
-			TrackItems trackType = tile.info.settings.type;
-			if (trackType != TrackItems.STRAIGHT && trackType != TrackItems.TURN && trackType != TrackItems.CUSTOM) {
-				hasSwitches = true;
 			}
 
 			Vec3d potential = MovementTrack.nextPositionDirect(getWorld(), currentPosition, tile, rotationYaw, distanceMeters);
@@ -436,10 +454,12 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 			}
 		}
 
-		if (!hasSwitches && cacheVector != null) {
+		if (cacheVector != null) {
 			motionCache.put(cacheVector, nextPos);
+			motionCacheLastModified = ticksExisted;
 		}
 
+//		trackCache(false);
 		return nextPos;
 	}
 
@@ -562,6 +582,13 @@ public class TileRailBase extends BlockEntityTrackTickable implements IRedstoneP
 					}
 					return;
 				}
+			}
+		}
+
+		if (this.ticksExisted % 20 == 0) {
+			long motionCacheAge = this.ticksExisted - this.motionCacheLastModified;
+			if (motionCacheAge >= 100) {
+				this.motionCache.clear();
 			}
 		}
 		
